@@ -1,0 +1,24 @@
+aastha.shinde_it22@pccoer.in
+Chinu#3115
+
+##upper left corner - file - open - dataset (adult.csv) - connect (Adult-NW1.csv) like drag and drop - left down sheet1 click 
+
+a. 1D (Linear) Data visualization 
+b. 2D (Planar) Data Visualization 
+c. 3D (Volumetric) Data Visualization 
+d. Temporal Data Visualization 
+e. Multidimensional Data Visualization 
+f. Tree/ Hierarchical Data visualization 
+- select right graph style 
+g. Network Data visualization 
+- columns -  line X (dim)
+row - line Y (dim select) , circle Y (dual axis)
+
+line Y (drop line select)
+color - measure name 
+detail - r/s
+
+circle 
+color - node 
+detail - r/s
+label - node
