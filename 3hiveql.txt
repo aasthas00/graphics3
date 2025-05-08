@@ -1,0 +1,80 @@
+use db1;
+create table flight (fno int, year int, dest varchar(10), delay float);
+alter table flight rename to air_flight; 
+alter table air_flight add columns (source varchar(10)); 
+drop table flight;
+desc air_flight;
+
+#creation of internal table 
+
+ create table flight (fno int, year int, dest varchar(10), delay float) 
+> row format delimited 
+> fields terminated by ',' 
+> lines terminated by '\n' 
+> stored as textfile;
+
+ insert into flight values (123, 2009, "Mumbai", 30.0); 
+ insert into flight values (342, 2008, "Nagpur", 13.0); 
+ insert into flight values (232, 2008, "Aurangabad", 0.0);
+ insert into flight values (103, 2009, "Kolhapur", 10.0);
+select * from flight; 
+
+#open new terminal
+gedit flight_input.txt
+#insert some dummy data the 4 values
+pwd 
+ls 
+
+#back to hive
+ load data local inpath "flight_input.txt" 
+> overwrite into table flight;
+
+ select * from flight;
+
+#join 
+ create table nflight (fno int, year int, source varchar(15)) 
+    > row format delimited 
+    > fields terminated by ',' 
+    > lines terminated by '\n' 
+    > stored as textfile; 
+
+> select * from nflight;
+
+ insert into nflight values (123, 2009, "Mumbai");
+ insert into nflight values (2345, 2008, "Mumbai");
+ insert into nflight values (2345, 2007, "Mumbai");
+insert into nflight values (1234, 2007, "Mumbai");
+insert into nflight values (1237, 2007, "Mumbai");
+
+ select * from nflight;
+
+> select a.fno, a.year, a.dest, a.delay, b.source 
+    > from flight a join nflight b 
+    > on (a.fno = b.fno);
+
+ select * from flight;
+
+> select a.fno, a.year, a.dest, a.delay, b.source 
+    > from flight a join nflight b 
+    > on (a.fno = b.fno);
+
+#indexing 
+> create index flight_index on table flight(fno) 
+>as 'org.apache.hadoop.hive.ql.index.compact.CompactIndexHandler' 
+> WITH DEFERRED REBUILD; 
+
+show tables; 
+
+#find avg 
+select avg(delay) from flight where year = 2008;
+
+
+#create external table and insert internal table into external
+
+>create external table hive_ext (id int, name varchar(10), sal int)
+row format delimited
+fields terminated by "," 
+lines terminated by ‘\n’
+stored as textfile;
+
+>INSERT INTO hive_ext select * from hive_int;
