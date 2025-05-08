@@ -1,0 +1,161 @@
+Single node hadoop
+- 
+multi node hadoop 
+-one machine is master and other is master 
+
+master 
+- main node 
+-data node 
+
+-job tracker 
+-task tracker 
+-slave services 
+
+gfs - google file system 
+chunck size - 64mb 
+hadoop size - 128mb 
+
+
+assign 2 - output 
+ip freq we have to count 
+how much the user have visited the site 
+
+input - log file 
+pr - mapreduce code 
+o/p - ip freq 
+
+hadoop - key,value pairs 
+
+output -- reducers 
+
+jitne input - tevde mappers 
+
+
+------------------
+#eclipse 
+file - new - java project - Workshop
+new file will be created 
+right click on project -new - package -packagename(Same as proj name)
+
+right click on project - new - class - classname(Same as proj name)
+
+-------
+#path to remove errors of importing
+right click on proj - build path - add external archives - file system - usr - lib - hadoop - hadoopcommon 2.6.0 -cdh 5.4.2 jar 
+
+usr- lib - hadoop 0.20mapreduce -hadoop core 2.6.0.mr1 cdh5 4 2 jar
+-------------------
+#to run - create jar file 
+right click on proj - export - java - jarfile -next- browse- next - Workshop.jar file
+
+------ system - desktop - paste - log file 
+
+----
+#we have to bring the input file in hadoop system  
+
+cmd 
+hadoop fs -put Desktop/Input/Input.txt work.txt
+
+hadoop fs -ls
+-----------
+to run jar file 
+
+hadoop jar Workshop.jar Workshop.Workshop work.txt output_path(pccoe) 
+
+----
+output 
+
+hadoop fs -cat pccoe/part-r-00000
+
+
+
+
+
+
+
+
+
+
+---------------
+package Workshop;
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+import org.apache.hadoop.conf.Configuration; #hadoop is apache porduct
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class WordCount {
+
+  public static class TokenizerMapper //
+       extends Mapper<Object, Text, Text, IntWritable>{ 
+
+//object - byte offset 
+//text - statment car bike boat
+//text , intwrite - car,1 bike,1-- key value pairs
+
+    private final static IntWritable one = new IntWritable(1); 
+//value of mapper is always one 
+    private Text word = new Text();
+
+    public void map(Object key, Text value, Context context
+                    ) throws IOException, InterruptedException {
+                    
+        // logic starts here
+        String[] tokens = value.toString().split(" ");
+//take the whole line from access log csv and spilt until space is not //coming 
+                      
+        String ipAddress = tokens[0]; //we only want token of 0 as we want // ip add
+
+        word.set(ipAddress) ; 
+        context.write(word, one) ;
+
+    }
+  }
+
+  public static class IntSumReducer
+       extends Reducer<Text,IntWritable,Text,IntWritable> {
+
+//reducer i/p key,value pair , o/p is key,value pair 
+//intwrit - summation
+
+    private IntWritable result = new IntWritable();
+
+    public void reduce(Text key, Iterable<IntWritable> values,
+                       Context context
+                       ) throws IOException, InterruptedException {
+
+//iterable class - iterate and add that 
+//context is o/p
+
+      int sum = 0;
+      for (IntWritable val : values) {
+        sum += val.get();
+      }
+      result.set(sum);
+      context.write(key, result);
+    }
+  }
+
+  public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+    Job job = Job.getInstance(conf, "word count"); //job obj is created 
+    job.setJarByClass(WordCount.class); //methods #cant run directly , so jar file 
+    job.setMapperClass(TokenizerMapper.class);  
+    job.setCombinerClass(IntSumReducer.class);
+    job.setReducerClass(IntSumReducer.class);
+    job.setOutputKeyClass(Text.class); #string
+    job.setOutputValueClass(IntWritable.class); #integer
+    FileInputFormat.addInputPath(job, new Path(args[0])); 
+    FileOutputFormat.setOutputPath(job, new Path(args[1])); 
+    System.exit(job.waitForCompletion(true) ? 0 : 1); 
+//until job not complete , run the code
+  }
+}
