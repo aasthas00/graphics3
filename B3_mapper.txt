@@ -1,0 +1,19 @@
+#open terminal 
+#gedit mapper.py
+
+
+#!/usr/bin/python
+#"""mapper.py"""
+
+import sys
+for line in sys.stdin: #reading entire line from user standrd ip
+	line = line.strip() #remove trailing and leading whitespace
+	words = line.split() #spilt the line into words
+
+#we are looping the words array and printing thw word 
+#write results to stdout
+#what the op will be here ip for reducer 
+#for every word , prints word and 1 in stdout
+ 
+	for word in words:
+		print '%s\t%s' % (word, 1)
