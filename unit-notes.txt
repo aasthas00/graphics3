@@ -1,0 +1,494 @@
+UNIT III – BIG DATA PROCESSING
+
+
+1. Q: What is Big Data Analytics?
+   A: Big Data Analytics refers to the process of examining large and varied data sets to uncover hidden patterns, correlations, and other insights using advanced analytics techniques such as machine learning, predictive analytics, and statistical analysis.
+
+2. Q: What is the Big Data Ecosystem?
+   A: The Big Data Ecosystem includes a set of technologies and tools that support the storage, processing, analysis, and visualization of big data. Key components:
+
+   * Storage: HDFS, NoSQL
+   * Processing: Hadoop, Spark
+   * Querying: Hive, Pig
+   * Ingestion: Sqoop, Flume
+   * Visualization: Tableau, Power BI
+
+3. Q: What is the Google File System (GFS)?
+   A: GFS is a scalable distributed file system developed by Google to manage large data files across multiple servers with fault tolerance, high throughput, and reliability.
+
+4. Q: What is Hadoop?
+   A: Hadoop is an open-source framework that allows for distributed processing of large datasets across clusters of computers using simple programming models. It has two main components:
+
+   * HDFS (Hadoop Distributed File System)
+   * MapReduce (data processing model)
+
+5. Q: What is HDFS?
+   A: HDFS stands for Hadoop Distributed File System. It splits large files into blocks (default 128MB), distributes them across nodes in a cluster, and provides fault tolerance through replication (default: 3 copies).
+
+6. Q: What is the role of the NameNode in HDFS?
+   A: NameNode is the master node in HDFS. It manages the metadata, like file names, directories, and locations of data blocks. It does not store the actual data.
+
+7. Q: What is the role of the DataNode?
+   A: DataNode is the worker/slave node in HDFS that stores the actual data blocks. It reports back to the NameNode periodically with the status of blocks.
+
+8. Q: What is a Secondary NameNode?
+   A: The Secondary NameNode is not a backup for the NameNode. Instead, it helps in checkpointing the file system metadata (fsimage and edits) to prevent loss and reduce NameNode startup time.
+
+9. Q: What are common Hadoop Shell commands?
+   A:
+
+   * hdfs dfs -ls / → list files
+   * hdfs dfs -put localfile /hdfsdir → upload file
+   * hdfs dfs -get /hdfsfile localdir → download file
+   * hdfs dfs -rm /file → remove file
+
+10. Q: Explain the anatomy of file write in HDFS.
+    A: When a client writes a file:
+
+* Client contacts NameNode to get block info.
+* NameNode provides list of DataNodes.
+* Data is written in a pipeline to DataNodes.
+* Data is replicated automatically.
+
+11. Q: What is MapReduce?
+    A: MapReduce is a programming model for processing large data sets in a parallel and distributed fashion. It has two main functions:
+
+* Map: Processes input and outputs key-value pairs.
+* Reduce: Aggregates the values for each key.
+
+12. Q: What are JobTracker and TaskTracker?
+    A:
+
+* JobTracker: Manages resources and assigns jobs to TaskTrackers (deprecated in Hadoop 2).
+* TaskTracker: Executes individual map and reduce tasks on DataNodes.
+
+(Note: In YARN, JobTracker is replaced by ResourceManager and ApplicationMaster.)
+
+13. Q: What is SSH in Hadoop Cluster Setup?
+    A: Secure Shell (SSH) is used to securely connect and manage nodes in a Hadoop cluster. Passwordless SSH is required for Hadoop to manage nodes without manual login.
+
+14. Q: What is NoSQL?
+    A: NoSQL (Not Only SQL) refers to non-relational databases designed for distributed data stores with large-scale data storage needs. Types include:
+
+* Key-Value (Redis)
+* Document (MongoDB)
+* Column-family (Cassandra)
+* Graph (Neo4j)
+
+15. Q: What is ETL in the context of Big Data?
+    A: ETL stands for Extract, Transform, Load. In textual ETL processing:
+
+* Extract: Collect data from sources (e.g., logs, text files)
+* Transform: Clean and convert to required format
+* Load: Store into data lakes, databases, or HDFS for analysis
+
+🛠 Summary Table:
+
+| Component         | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| Hadoop            | Framework for distributed storage and processing    |
+| HDFS              | Storage layer of Hadoop                             |
+| MapReduce         | Data processing model                               |
+| NameNode/DataNode | Master/slave nodes for file system management       |
+| NoSQL             | Databases for non-relational, scalable data storage |
+| ETL               | Pipeline for preparing data for analytics           |
+
+---------------------------------------------------------------------------
+BIG DATA ANALYTICS
+
+1. Q: What is Big Data Analytics Architecture?
+   A: It is a layered structure used for the ingestion, storage, processing, and analysis of massive datasets.
+   Typical layers:
+
+* Data Sources → Data Ingestion → Storage (HDFS/NoSQL) → Processing (Hadoop/Spark) → Analytics & Visualization (Hive/Tableau)
+
+2. Q: What is the lifecycle of Big Data Analytics?
+   A: The key stages in the analytics lifecycle are:
+
+   1. Data Collection/Acquisition
+   2. Data Ingestion
+   3. Data Storage
+   4. Data Processing
+   5. Data Analysis
+   6. Data Visualization
+   7. Decision-making
+
+3. Q: What are the different types of Data Analytics?
+   A:
+
+* Descriptive: What happened? (e.g., dashboards)
+* Diagnostic: Why did it happen? (e.g., root cause analysis)
+* Predictive: What is likely to happen? (e.g., forecasting)
+* Prescriptive: What action to take? (e.g., optimization)
+
+4. Q: What are analytical approaches?
+   A:
+
+* Statistical Analysis
+* Machine Learning
+* Data Mining
+* Time Series Analysis
+* Text Analytics
+
+5. Q: How is data ingested from various sources?
+   A: Data ingestion is the process of importing data for immediate use or storage in a database.
+   Examples:
+
+* CSV: Using pandas.read\_csv()
+* JSON: Using json module or pandas.read\_json()
+* HTML: Using BeautifulSoup
+* Excel: Using pandas.read\_excel()
+* MySQL/MongoDB/SQLite: Using connectors and queries via SQLAlchemy, PyMongo, sqlite3
+
+6. Q: What is Data Cleaning?
+   A: Data cleaning involves identifying and correcting errors, inconsistencies, and missing values in datasets to improve data quality.
+
+7. Q: What is Missing Value Imputation?
+   A: It's the process of filling missing values using techniques like:
+
+* Mean/Median/Mode imputation
+* Forward/Backward fill
+* Predictive modeling
+
+8. Q: What is Data Transformation?
+   A: It refers to converting data into a suitable format or structure for analysis.
+   Examples:
+
+* Scaling
+* Normalization
+* One-hot encoding
+* Log transformation
+
+9. Q: What is Data Standardization?
+   A: It’s a transformation technique where data is rescaled to have zero mean and unit variance (Z = (x - μ) / σ). It helps in improving model performance.
+
+10. Q: How to handle Categorical Data with 2 or more categories?
+    A:
+
+* For binary: Label Encoding (Yes→1, No→0)
+* For multiple categories: One-Hot Encoding (e.g., color: Red, Blue, Green → \[1 0 0], \[0 1 0], \[0 0 1])
+
+11. Q: What are some statistical methods used in data analysis?
+    A:
+
+* Mean, Median, Mode
+* Standard Deviation, Variance
+* Correlation
+* ANOVA
+* Hypothesis Testing
+
+12. Q: What are graphical methods for data analysis?
+    A:
+
+* Histograms
+* Box plots
+* Scatter plots
+* Bar graphs
+* Line charts
+  These help in understanding data distribution, outliers, and relationships.
+
+13. Q: What is Hive?
+    A: Apache Hive is a data warehouse infrastructure built on top of Hadoop. It provides a SQL-like interface to query data stored in HDFS using HiveQL.
+
+14. Q: How does Hive help in data analytics?
+    A:
+
+* Enables querying big data using familiar SQL syntax
+* Converts SQL queries into MapReduce jobs
+* Good for batch processing and summarization
+
+15. Q: What is the difference between Structured and Unstructured data?
+    A:
+
+* Structured: Organized in rows and columns (e.g., tables)
+* Unstructured: Not organized (e.g., text, images, videos)
+
+🛠 Summary Table:
+
+| Component            | Description                                       |
+| -------------------- | ------------------------------------------------- |
+| Data Ingestion       | Import data from various sources                  |
+| Data Cleaning        | Remove inconsistencies and errors                 |
+| Data Transformation  | Modify data to fit analysis models                |
+| Data Standardization | Normalize scales (Z-score)                        |
+| Hive                 | SQL-on-Hadoop tool for querying big data          |
+| Analytics Types      | Descriptive, Diagnostic, Predictive, Prescriptive |
+----------------------------------------------------------------------------------
+
+Histogram	
+A graph showing the distribution of a single numerical variable using bins.	
+Visualize frequency distribution of continuous data.	
+Numerical (e.g., age, salary)
+
+Box Plot (Box-and-Whisker Plot)	
+Displays distribution through five-number summary: min, Q1, median, Q3, max.	
+Identify outliers, skewness, and data spread.	
+Numerical
+
+Scatter Plot	
+Graph of points plotted to show the relationship between two numerical variables.	
+Analyze correlations or relationships between variables.	
+Numerical pairs (e.g., height vs weight)
+
+Bar Graph	
+Uses rectangular bars to represent categorical data frequencies.	
+Compare values between discrete categories.	
+Categorical (e.g., gender, product type)
+
+Line Chart	
+Connects data points with lines to show trends over time or order.	
+Track changes over time (time series).	
+Time vs numerical (e.g., stock price over time)
+
+-----------------------------------------------
+ UNIT V – BIG DATA VISUALIZATION
+
+
+1. Q: What is Data Visualization?
+   A: Data Visualization is the graphical representation of information and data using visual elements like charts, graphs, and maps. It helps users understand patterns, trends, and outliers in data.
+
+2. Q: Why is Data Visualization important in Big Data?
+   A: Because big data is vast and complex, visualization helps in:
+
+   * Identifying patterns quickly
+   * Communicating results clearly
+   * Supporting data-driven decisions
+   * Simplifying complex data for non-technical users
+
+3. Q: What are the challenges of Big Data Visualization?
+   A:
+
+   * Scalability: Rendering millions of data points efficiently
+   * Performance: High computation and memory usage
+   * Real-time streaming data: Updating visuals dynamically
+   * Data quality: Handling missing or noisy data
+   * User interaction: Enabling smooth filters, zoom, etc.
+
+4. Q: What are conventional data visualization tools?
+   A:
+
+   * MS Excel
+   * MATLAB
+   * R (ggplot2)
+   * Python (Matplotlib, Seaborn)
+     These tools work well with small to medium-sized datasets.
+
+5. Q: What are techniques for visual data representation?
+   A:
+
+   * Charts: Bar, Line, Pie
+   * Graphs: Scatter, Network graphs
+   * Heatmaps
+   * Dashboards
+   * Geospatial maps
+   * Word clouds
+
+6. Q: What are the types of Data Visualization?
+   A:
+
+| Type         | Examples                        |
+| ------------ | ------------------------------- |
+| Univariate   | Histogram, Pie Chart            |
+| Bivariate    | Scatter Plot, Line Chart        |
+| Multivariate | Bubble Chart, Heatmap           |
+| Temporal     | Time Series Line Chart          |
+| Geospatial   | Maps (Choropleth, Point Maps)   |
+| Interactive  | Dashboards, Filters, Drill-down |
+
+7. Q: What are the tools used in Big Data Visualization?
+   A:
+
+* Propriety (Commercial):
+
+  * Tableau
+  * Power BI
+  * QlikView
+  * SAP Lumira
+
+* Open-source:
+
+  * D3.js
+  * Google Charts
+  * Apache Superset
+  * Kibana
+  * Plotly (Python, JS)
+
+8. Q: What is Tableau?
+   A: Tableau is a powerful commercial data visualization tool that enables users to create interactive and shareable dashboards. It connects to many data sources (Excel, SQL, Hadoop, etc.) and uses drag-and-drop for building visuals.
+
+9. Q: What are some features of Tableau?
+   A:
+
+   * Drag-and-drop interface
+   * Live and extract data connectivity
+   * Dashboard creation
+   * Real-time collaboration and sharing
+   * Mapping and geospatial analysis
+
+10. Q: What is D3.js?
+    A: D3.js (Data-Driven Documents) is a JavaScript library for creating interactive, dynamic, and web-based data visualizations by binding data to DOM elements.
+
+11. Q: What is Google Chart API?
+    A: Google Charts is a free tool that lets you create interactive charts for web applications using HTML5 and SVG technology. It is easy to use and customizable.
+
+12. Q: What is Candela?
+    A: Candela is an open-source suite of web-based visualization components built on top of D3.js, Vega, and other libraries. It offers ready-to-use interactive visualizations.
+
+13. Q: Explain the Zomato case study used in this unit.
+    A: The Zomato case study typically involves:
+
+* Data collection: Datasets from Zomato API or Kaggle (e.g., restaurants, ratings)
+* Data cleaning: Removing nulls, converting categories
+* Visualization: Maps of restaurant density, ratings vs price, cuisine trends
+* Tools: Tableau or Python (Seaborn/Plotly)
+* Goal: Derive business insights (e.g., best area for a new outlet)
+
+14. Q: What are Analytical Techniques used in Big Data Visualization?
+    A:
+
+* Trend Analysis
+* Cluster Analysis
+* Correlation Mapping
+* Anomaly Detection
+* Time-Series Forecasting (via visual plots)
+
+🛠 Summary Table:
+
+| Category                  | Examples / Description                                  |
+| ------------------------- | ------------------------------------------------------- |
+| Visualization Tools       | Tableau, Power BI, D3.js, Google Charts                 |
+| Visualization Types       | Charts, Maps, Dashboards, Heatmaps                      |
+| Use Cases                 | Business insights, Performance monitoring               |
+| Visualization Challenges  | Scalability, Real-time processing, Interactivity        |
+| Zomato Case Study Outcome | Visual business intelligence (e.g., best city, ratings) |
+
+------------------------------------------------------------------------------------------
+
+ UNIT VI – BIG DATA TECHNOLOGIES APPLICATION AND IMPACT
+
+
+1. Q: What is Social Media Analytics?
+   A: Social Media Analytics is the process of collecting data from social platforms (like Twitter, Facebook, Instagram), analyzing it to gain insights into trends, customer sentiment, behavior, and engagement metrics.
+
+2. Q: What is Text Mining?
+   A: Text mining (also known as text data mining or text analytics) is the process of extracting meaningful information and patterns from unstructured text using techniques such as:
+
+   * Natural Language Processing (NLP)
+   * Sentiment Analysis
+   * Tokenization
+   * Named Entity Recognition
+
+3. Q: What is Mobile Analytics?
+   A: Mobile Analytics tracks and analyzes data from mobile apps or devices to understand user behavior, app performance, and improve the user experience.
+
+Examples:
+
+* Daily Active Users (DAU)
+* Session Duration
+* Retention Rate
+
+4. Q: What is the Big Data Analytics Life Cycle in case studies?
+   A:
+
+   * Discovery (Understanding problem/domain)
+   * Data Preparation (Cleaning, Transformation)
+   * Model Planning (Statistical/machine learning)
+   * Model Building (Training models)
+   * Communicate Results (Visuals, reports)
+   * Operationalize (Deploying models/insights)
+
+5. Q: What is the organizational impact of Big Data?
+   A:
+
+   * Informed decision-making
+   * Operational efficiency
+   * Enhanced customer experience
+   * Competitive advantage
+   * Innovation opportunities
+
+6. Q: What is Decision Theory in the context of data analytics?
+   A: Decision theory is a framework for making logical choices in the face of uncertainty using:
+
+   * Probabilistic models
+   * Cost-benefit analysis
+   * Expected utility
+
+7. Q: What is a Big Data Strategy?
+   A: A Big Data Strategy is an organization’s plan for managing, analyzing, and deriving value from big data. It includes:
+
+   * Infrastructure and Tools
+   * Data Governance
+   * Skills and Teams
+   * Use Cases
+   * Security and Compliance
+
+8. Q: What are Big Data Value Creation Drivers?
+   A:
+
+   * Volume: Ability to process more data
+   * Variety: Integration of multiple data types (text, images, logs)
+   * Velocity: Real-time analytics for faster decisions
+   * Veracity: Ensuring data accuracy
+   * Visualization: Delivering insights in an understandable way
+
+9. Q: Explain Michael Porter’s Value Creation Model in Big Data.
+   A: Porter’s model explains how organizations create value using competitive strategies. Big Data supports:
+
+   * Cost leadership (efficiency)
+   * Differentiation (customer insights)
+   * Focus strategies (targeted marketing)
+     It enhances value chains like marketing, sales, operations, and support services.
+
+10. Q: What are Big Data UX (User Experience) Ramifications?
+    A:
+
+* Systems must support large-scale interactivity
+* Dashboards need to handle dynamic, real-time data
+* Must maintain responsiveness despite data load
+* Design must simplify complex insights for decision-makers
+
+11. Q: What are Big Data Use Cases?
+    A:
+
+* Healthcare: Disease prediction, patient analytics
+* Finance: Fraud detection, risk analysis
+* Retail: Recommendation engines, customer segmentation
+* Transportation: Route optimization
+* Telecom: Network usage prediction, churn analysis
+
+12. Q: What are major Big Data Analytics Challenges?
+    A:
+
+* Data privacy and security
+* Data integration from multiple sources
+* Real-time processing limitations
+* Lack of skilled professionals
+* Tool selection and cost
+
+13. Q: What are some current research directions in Big Data?
+    A:
+
+* Scalable algorithms for real-time big data
+* Privacy-preserving data mining
+* Edge analytics for IoT
+* Explainable AI on big datasets
+* Stream processing frameworks (Apache Flink, Spark Streaming)
+
+🛠 Summary Table:
+
+| Concept                | Description                                          |
+| ---------------------- | ---------------------------------------------------- |
+| Social Media Analytics | Analyzing social platform data                       |
+| Text Mining            | Extracting info from unstructured text               |
+| Mobile Analytics       | Analyzing app and user behavior                      |
+| Decision Theory        | Framework for logical decision-making                |
+| Big Data Strategy      | Roadmap for big data management and value creation   |
+| Porter’s Model         | Strategic advantage via big data                     |
+| Challenges             | Security, integration, talent, tools                 |
+| Research Areas         | Real-time analytics, edge computing, AI transparency |
+
+
+
+
+
+
