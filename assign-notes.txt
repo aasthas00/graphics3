@@ -1,0 +1,1463 @@
+Great! Let's break down the **MapReduce program in Java** line by line and explain the **important theory** behind it. This experiment is about designing a **distributed application using MapReduce** to process a log file and list users (IP addresses) who have logged in for the **maximum duration**. Though this code counts frequency of IPs (logins), it sets up the foundation for analyzing login durations.
+
+---
+
+### ✅ COMPLETE EXPLANATION OF THE CODE
+
+```java
+package Workshop;
+```
+
+* Declares the package name. Java organizes code into packages; here, it's named `Workshop`.
+
+---
+
+```java
+import java.io.IOException;
+import java.util.StringTokenizer;
+```
+
+* Imports classes for handling **input-output exceptions** and **tokenizing strings** (though `StringTokenizer` isn't used here).
+
+```java
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+```
+
+* These are Hadoop imports:
+
+  * `Configuration` – for Hadoop job configuration.
+  * `Path` – represents file paths in HDFS.
+  * `IntWritable` – Hadoop’s writable wrapper for `int`.
+  * `Text` – Writable for strings.
+  * `Job` – Represents a MapReduce job.
+  * `Mapper` and `Reducer` – Base classes to define logic.
+  * `FileInputFormat`, `FileOutputFormat` – To set input and output file paths.
+
+---
+
+```java
+public class WordCount {
+```
+
+* Defines the main class `WordCount`. Despite the name, it’s adapted for counting IP address logins from log files.
+
+---
+
+### 🔹 Mapper Class
+
+```java
+public static class TokenizerMapper extends Mapper<Object, Text, Text, IntWritable> {
+```
+
+* Declares the Mapper class. It takes:
+
+  * **Input key**: `Object` (line offset in file)
+  * **Input value**: `Text` (a line from log file)
+  * **Output key**: `Text` (IP address)
+  * **Output value**: `IntWritable` (count = 1)
+
+```java
+private final static IntWritable one = new IntWritable(1);
+private Text word = new Text();
+```
+
+* `one`: We always emit a count of 1 for each IP address.
+* `word`: Temporary holder for the IP address.
+
+```java
+public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+```
+
+* The `map()` function is called once per line of input.
+* It receives the file **line offset** (`key`) and **line text** (`value`).
+
+```java
+String[] tokens = value.toString().split(" ");
+```
+
+* Converts the line to a string and splits it by spaces into words (tokens). Typical log files are space-separated.
+
+```java
+String ipAddress = tokens[0];
+```
+
+* We assume the **first token is the IP address** (e.g., from Apache log files).
+
+```java
+word.set(ipAddress);
+context.write(word, one);
+```
+
+* Set the word as the current IP.
+* Emit a `(IP address, 1)` key-value pair for the reducer.
+
+---
+
+### 🔹 Reducer Class
+
+```java
+public static class IntSumReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+```
+
+* Reducer gets:
+
+  * **Input key**: IP address
+  * **Iterable values**: List of `1`s
+  * **Output key/value**: IP address with sum of counts
+
+```java
+private IntWritable result = new IntWritable();
+```
+
+* Output holder for final sum.
+
+```java
+public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+```
+
+* Called once per unique IP address.
+* `values` contains all 1’s emitted by the mapper for that IP.
+
+```java
+int sum = 0;
+for (IntWritable val : values) {
+  sum += val.get();
+}
+```
+
+* Iterates over values and adds them.
+
+```java
+result.set(sum);
+context.write(key, result);
+```
+
+* Sets result to the sum and writes `(IP, total_count)`.
+
+---
+
+### 🔹 Driver Code (main)
+
+```java
+public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+```
+
+* Creates a Hadoop configuration object.
+
+```java
+Job job = Job.getInstance(conf, "word count");
+```
+
+* Initializes a new MapReduce job with a job name.
+
+```java
+job.setJarByClass(WordCount.class);
+```
+
+* Tells Hadoop which JAR file to use (based on the class).
+
+```java
+job.setMapperClass(TokenizerMapper.class);
+job.setCombinerClass(IntSumReducer.class);
+job.setReducerClass(IntSumReducer.class);
+```
+
+* Sets Mapper and Reducer classes.
+* Combiner (a mini-reducer) optimizes performance by reducing data before shuffling.
+
+```java
+job.setOutputKeyClass(Text.class);
+job.setOutputValueClass(IntWritable.class);
+```
+
+* Defines output key/value types.
+
+```java
+FileInputFormat.addInputPath(job, new Path(args[0]));
+FileOutputFormat.setOutputPath(job, new Path(args[1]));
+```
+
+* Specifies input and output paths in HDFS (from command-line args).
+
+```java
+System.exit(job.waitForCompletion(true) ? 0 : 1);
+```
+
+* Submits job and exits when done.
+
+---
+
+### 📘 THEORY CONCEPTS YOU MUST KNOW
+
+| Concept                     | Explanation                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------------- |
+| **MapReduce**               | Programming model for processing large data sets with a distributed algorithm on a Hadoop cluster.  |
+| **Mapper**                  | Processes input data line by line and emits intermediate `(key, value)` pairs.                      |
+| **Reducer**                 | Aggregates/interprets output of mappers and performs final logic like summing, sorting, etc.        |
+| **Combiner**                | Acts like a local reducer to reduce bandwidth during shuffle phase.                                 |
+| **HDFS**                    | Hadoop Distributed File System where input/output files are stored.                                 |
+| **Writable**                | Hadoop uses its own serializable types (like `IntWritable`, `Text`) instead of Java's primitives.   |
+| **Pseudo-distributed mode** | Hadoop runs all daemons on a single machine but simulates distributed behavior — great for testing. |
+
+---
+
+### ✅ OUTPUT INTERPRETATION
+
+For a log file like:
+
+```
+192.168.0.1 - - [timestamp] "GET /index.html"
+192.168.0.2 - - [timestamp] "POST /login"
+192.168.0.1 - - [timestamp] "GET /home"
+```
+
+Output:
+
+```
+192.168.0.1    2
+192.168.0.2    1
+```
+
+This shows how many times each user (IP) logged in or interacted with the system — a basis for detecting **long sessions or maximum usage**.
+
+Here are important viva questions and answers for your Data Science and Big Data Analytics practical (Experiment 1) on MapReduce using Java in pseudo-distributed Hadoop mode:
+
+ EXPERIMENT 1:
+Design a distributed application using MapReduce (Java) to process a system log file and list users with the maximum login duration.
+
+VIVA QUESTIONS AND ANSWERS:
+
+1. What is MapReduce?
+   MapReduce is a programming model and processing technique for distributed computing, developed by Google. It processes large data sets with a parallel, distributed algorithm on a Hadoop cluster. It consists of:
+
+* Map function: Processes input data into key-value pairs.
+* Reduce function: Aggregates intermediate key-value pairs.
+
+2. What is the role of the Mapper and Reducer in your application?
+
+* Mapper: Extracts user ID and session duration from each log line and emits (user, sessionTime).
+* Reducer: Aggregates all session times for each user and emits (user, totalTime).
+
+3. What is a pseudo-distributed mode in Hadoop?
+   In pseudo-distributed mode, Hadoop runs all its daemons (NameNode, DataNode, ResourceManager, NodeManager) on a single machine, simulating a real distributed environment. It is commonly used for development and testing.
+
+4. How did you structure the log file, and what format did it follow?
+   The log file contains entries with user name, login time, and logout time. For example:
+   user1 2024-01-01T10:00:00 2024-01-01T12:00:00
+   We parse the login and logout timestamps to calculate session durations.
+
+5. How did you calculate login durations?
+   We parse login and logout times as Java Date/Time objects, then subtract login time from logout time to get duration in milliseconds or seconds.
+
+6. Which classes are necessary in a Hadoop MapReduce Java program?
+   At minimum:
+
+* Mapper class (extends Mapper)
+* Reducer class (extends Reducer)
+* Driver class (with main method to configure and start the job)
+
+7. What data types are used in the Mapper and Reducer class?
+   We used:
+
+* Mapper input: LongWritable, Text
+* Mapper output: Text (user), IntWritable (duration in minutes/seconds)
+* Reducer output: Text (user), IntWritable (total session time)
+
+8. What is the input format used in your MapReduce job?
+   We used the default TextInputFormat, which reads data line-by-line from the log file.
+
+9. How did you handle malformed log lines or errors?
+   We used try-catch blocks inside the Mapper to ignore or log invalid lines and continue processing.
+
+10. What is the output of your program?
+    A list of users along with their total login durations, e.g.:
+    user1    420
+    user2    300
+    This shows the total minutes each user was logged in.
+
+11. How do you determine the user who logged in for the maximum period?
+    You can:
+    a) Sort the final output manually.
+    OR
+    b) Modify the Reducer to track and emit only the user with the highest session time.
+
+12. Why did you choose Java for this MapReduce program?
+    Java is the native language for Hadoop MapReduce API. It offers better control over types and performance and integrates tightly with Hadoop.
+
+13. How do you run this program on Hadoop?
+    Steps:
+
+* Start Hadoop in pseudo-distributed mode.
+* Put the log file in HDFS.
+* Compile Java code and create a JAR.
+* Run the job using:
+  hadoop jar UserSession.jar MainClass /input/logfile /output
+
+14. What is the output format used?
+    The default is TextOutputFormat: each line contains a key and value separated by a tab.
+
+15. What challenges did you face while developing this application?
+    Common challenges:
+
+* Parsing time formats correctly
+* Handling exceptions in malformed logs
+* Understanding Java MapReduce API
+* Debugging in pseudo-distributed Hadoop
+
+16. What are the alternatives to MapReduce in Hadoop ecosystem?
+    Alternatives include:
+
+* Apache Spark (faster in-memory processing)
+* Apache Hive (SQL-based querying)
+* Apache Pig (scripting language for data flows)
+
+17. How is data transferred between Mapper and Reducer?
+    Via the shuffle and sort phase. Hadoop groups intermediate outputs by key and sorts them before passing them to the Reducer.
+
+18. What is HDFS and why is it used here?
+    HDFS (Hadoop Distributed File System) is a scalable, fault-tolerant file system designed to store large files across multiple nodes. It is used to store input and output files for MapReduce jobs.
+
+19. Can we run multiple MapReduce jobs in a pipeline?
+    Yes, MapReduce jobs can be chained using the output of one job as the input to another.
+
+20. What would you improve in your solution?
+
+* Add sorting to show top users by session time.
+* Handle more complex log formats.
+* Add Combiner to optimize performance.
+
+Let me know if you want the Java code explanation or more questions on Hadoop concepts.
+
+-------------------------------------
+ EXPERIMENT 2
+Objective: Write an application using HiveQL for a Flight Information System with operations such as table creation, data loading, joins, indexing, and analytical queries (like average departure delay per day in 2008).
+
+VIVA QUESTIONS AND ANSWERS:
+
+1. What is Hive?
+   Apache Hive is a data warehouse tool built on top of Hadoop for analyzing large datasets. It provides a SQL-like query language called HiveQL to perform queries and manage large structured datasets stored in HDFS.
+
+2. What is the difference between Hive and RDBMS?
+
+* Hive is optimized for batch processing on large datasets using HDFS.
+* RDBMS supports transactional processing and fast row-level updates.
+* Hive doesn’t support UPDATE and DELETE efficiently like RDBMS.
+
+3. What is HiveQL?
+   HiveQL (Hive Query Language) is a SQL-like language used in Apache Hive to manage and query structured data.
+
+4. What is the difference between internal and external tables in Hive?
+
+* Internal Table: Hive manages the table and its data. Dropping the table deletes the data.
+* External Table: Hive only manages the metadata. The data remains in HDFS even if the table is dropped.
+
+5. How do you create a database in Hive?
+   CREATE DATABASE flight\_db;
+
+6. How do you drop and alter a database?
+
+* DROP DATABASE flight\_db CASCADE;
+* ALTER DATABASE flight\_db SET DBPROPERTIES ('creator'='Aastha');
+
+7. How do you create a managed/internal table in Hive for flight data?
+   CREATE TABLE flights (
+   flight\_date STRING,
+   airline STRING,
+   origin STRING,
+   dest STRING,
+   dep\_delay INT
+   )
+   ROW FORMAT DELIMITED
+   FIELDS TERMINATED BY ','
+   STORED AS TEXTFILE;
+
+8. How do you create an external table?
+   CREATE EXTERNAL TABLE flights\_ext (
+   flight\_date STRING,
+   airline STRING,
+   origin STRING,
+   dest STRING,
+   dep\_delay INT
+   )
+   ROW FORMAT DELIMITED
+   FIELDS TERMINATED BY ','
+   STORED AS TEXTFILE
+   LOCATION '/user/aastha/hive/flights/';
+
+9. How do you load data into a Hive table?
+   LOAD DATA INPATH '/user/aastha/input/flights.csv' INTO TABLE flights;
+
+10. How do you insert new rows into a Hive table?
+    INSERT INTO TABLE flights VALUES ('2008-01-01', 'AA', 'JFK', 'LAX', 20);
+
+11. How do you add a new column to an existing Hive table?
+    ALTER TABLE flights ADD COLUMNS (arr\_delay INT);
+
+12. How do you join two Hive tables?
+    Assume: airlines(airline\_id, airline\_name)
+
+SELECT f.flight\_date, a.airline\_name, f.dep\_delay
+FROM flights f
+JOIN airlines a
+ON f.airline = a.airline\_id;
+
+13. How do you create an index in Hive?
+    CREATE INDEX idx\_delay ON TABLE flights (dep\_delay) AS 'COMPACT' WITH DEFERRED REBUILD;
+
+14. How do you rebuild an index in Hive?
+    ALTER INDEX idx\_delay ON flights REBUILD;
+
+15. How do you delete an index?
+    DROP INDEX idx\_delay ON flights;
+
+16. How do you find the average departure delay per day in 2008?
+    SELECT flight\_date, AVG(dep\_delay) AS avg\_delay
+    FROM flights
+    WHERE flight\_date LIKE '2008%'
+    GROUP BY flight\_date;
+
+17. What file formats does Hive support?
+    TEXTFILE, SEQUENCEFILE, ORC, PARQUET, AVRO, JSON.
+
+18. Which file format is best for performance in Hive?
+    ORC and PARQUET formats offer better performance due to compression and columnar storage.
+
+19. What is the significance of partitioning in Hive?
+    Partitioning improves query performance by dividing the table into partitions based on column values (e.g., date, airline).
+
+20. How do you partition a table in Hive?
+    CREATE TABLE flights\_part (airline STRING, origin STRING, dep\_delay INT)
+    PARTITIONED BY (flight\_date STRING)
+    ROW FORMAT DELIMITED
+    FIELDS TERMINATED BY ','
+    STORED AS TEXTFILE;
+
+21. What is bucketing in Hive?
+    Bucketing divides data into equal-sized buckets based on a hash function of a column. Improves join performance when used properly.
+
+22. What are Hive SerDes?
+    SerDe stands for Serializer/Deserializer. It allows Hive to read/write data in custom formats.
+
+23. How do you check the schema of a Hive table?
+    DESCRIBE flights;
+
+24. Can we use WHERE clause in Hive? How?
+    Yes. Example:
+    SELECT \* FROM flights WHERE dep\_delay > 15;
+
+25. What is the default storage location for Hive tables?
+    For managed tables: /user/hive/warehouse/databasename.db/tablename
+    For external tables: specified manually using LOCATION
+
+26. How does Hive handle NULL values?
+    NULL is returned when a column is missing or cannot be parsed. It is displayed as NULL in results.
+
+27. What is the difference between Hive and Pig?
+
+* Hive is SQL-like; Pig uses Pig Latin (scripting language).
+* Hive is better suited for structured data; Pig handles both structured and semi-structured data.
+
+28. What is the use of ANALYZE TABLE command in Hive?
+    To compute statistics on a table for the optimizer:
+    ANALYZE TABLE flights COMPUTE STATISTICS;
+
+29. How do you optimize performance in Hive?
+
+* Use partitioning and bucketing
+* Choose columnar formats like ORC/Parquet
+* Use indexing where needed
+* Avoid using SELECT \*
+
+30. What challenges did you face in this experiment?
+    Common answers:
+
+* Understanding Hive syntax and file locations
+* Managing HDFS paths for data
+* Handling NULLs or bad data formats
+* Hive performance issues without indexing or partitioning
+
+-----------------------------------------------------------------------
+Here's a complete list of viva questions and answers based on Experiment 3 — Data Manipulation in Python using Facebook metrics dataset:
+
+EXPERIMENT 3
+Objective: Perform various data manipulation operations using Python (Pandas) on the Facebook metrics dataset including subsetting, merging, sorting, transposing, and reshaping.
+
+ VIVA QUESTIONS AND ANSWERS:
+
+1. What is the purpose of using the Facebook metrics dataset in this experiment?
+   The Facebook metrics dataset is used to explore and practice data manipulation techniques such as filtering, merging, reshaping, and sorting using the pandas library in Python.
+
+2. What is a DataFrame in Python?
+   A DataFrame is a two-dimensional labeled data structure with columns of potentially different types, provided by the pandas library. It is similar to a table in a database or an Excel spreadsheet.
+
+3. Which library is used for data manipulation in Python?
+   Pandas is the most widely used Python library for data manipulation and analysis.
+
+4. How do you import the pandas library?
+   import pandas as pd
+
+5. How do you read a CSV file into a DataFrame?
+   df = pd.read\_csv("facebook\_metrics.csv")
+
+6. What is subsetting in pandas?
+   Subsetting means selecting specific rows and/or columns from a DataFrame based on certain conditions.
+
+7. How do you subset data in pandas?
+   Examples:
+
+* Select columns: df\[\['Page total likes', 'Type']]
+* Filter rows: df\[df\['Type'] == 'Photo']
+
+8. How do you select rows where the ‘Type’ is ‘Photo’ and ‘Total Interactions’ > 1000?
+   df\[(df\['Type'] == 'Photo') & (df\['Total Interactions'] > 1000)]
+
+9. How do you merge two DataFrames in pandas?
+   pd.merge(df1, df2, on='common\_column')
+
+10. What are the types of merge operations supported by pandas?
+
+* Inner Join
+* Left Join
+* Right Join
+* Outer Join
+
+11. What is the difference between merge() and concat() in pandas?
+
+* merge() is used to combine dataframes based on a key column(s).
+* concat() is used to combine dataframes by rows or columns regardless of matching keys.
+
+12. How do you sort a DataFrame by a column?
+    df.sort\_values(by='Total Interactions', ascending=False)
+
+13. How can you sort the dataset first by ‘Type’ and then by ‘Total Interactions’?
+    df.sort\_values(by=\['Type', 'Total Interactions'], ascending=\[True, False])
+
+14. What is transposing a DataFrame?
+    Transposing means flipping rows and columns using the .T attribute.
+
+15. How do you transpose a DataFrame?
+    df.T
+
+16. When is transposing useful?
+    Transposing is useful when switching the orientation of data is needed, especially for analytical or display purposes.
+
+17. How do you check the shape of a DataFrame?
+    df.shape returns a tuple: (number of rows, number of columns)
+
+18. What is reshaping data?
+    Reshaping refers to changing the layout or structure of a DataFrame, such as pivoting or unpivoting data.
+
+19. What is the difference between melt() and pivot()?
+
+* melt() converts wide-format data to long-format.
+* pivot() converts long-format data to wide-format.
+
+20. How do you reshape a DataFrame using melt?
+    pd.melt(df, id\_vars=\['Type'], value\_vars=\['Total Interactions'])
+
+21. How do you reshape using pivot?
+    df.pivot(index='Type', columns='Category', values='Total Interactions')
+
+22. How do you check the data types of all columns?
+    df.dtypes
+
+23. How do you check for missing data?
+    df.isnull().sum()
+
+24. How do you fill missing values with zero?
+    df.fillna(0)
+
+25. What function is used to rename columns in pandas?
+    df.rename(columns={'old\_name': 'new\_name'}, inplace=True)
+
+26. How do you get summary statistics for numeric columns?
+    df.describe()
+
+27. What is the purpose of using head() and tail()?
+
+* df.head(n): shows the first n rows (default is 5)
+* df.tail(n): shows the last n rows
+
+28. What does df.info() return?
+    It gives summary of the DataFrame including data types, non-null values, and memory usage.
+
+29. How do you filter rows based on multiple conditions?
+    Using logical operators like & (and), | (or):
+    df\[(df\['Type'] == 'Photo') & (df\['Category'] == 1)]
+
+30. What challenges did you face in this experiment?
+    Example answers:
+
+* Understanding melt and pivot functions
+* Managing missing data or inconsistent types
+* Performing multi-level sorting and filtering
+
+
+-----------------------------------
+ EXPERIMENT 4
+Objective: Perform data cleaning, integration, transformation, error correction, and data model building using Python on Air Quality and Heart Disease datasets.
+
+VIVA QUESTIONS AND ANSWERS:
+
+1. What is the purpose of this experiment?
+   To apply data preprocessing and machine learning techniques on real-world datasets (Air Quality and Heart Disease), including cleaning, integration, transformation, and predictive modeling.
+
+2. What is data cleaning?
+   Data cleaning is the process of identifying and correcting (or removing) errors and inconsistencies from data to improve its quality.
+
+3. Give examples of data cleaning techniques.
+
+* Handling missing values (drop or fill)
+* Removing duplicates
+* Converting data types
+* Standardizing formats (e.g., date format)
+
+4. How do you check for missing values in a DataFrame?
+   df.isnull().sum()
+
+5. How do you remove rows with missing values?
+   df.dropna()
+
+6. How do you replace missing values with the mean?
+   df\['column'] = df\['column'].fillna(df\['column'].mean())
+
+7. What is data integration?
+   Data integration is the process of combining data from different sources into a unified view.
+
+8. How do you merge Air Quality and Heart Disease datasets?
+   pd.merge(df\_air, df\_heart, on='common\_column')
+
+9. What is data transformation?
+   Data transformation involves converting data into a suitable format or structure for analysis.
+
+10. Give examples of data transformation.
+
+* Normalization
+* Standardization
+* Encoding categorical variables
+* Log transformation
+
+11. How do you normalize data in pandas?
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    df\[\['col1', 'col2']] = scaler.fit\_transform(df\[\['col1', 'col2']])
+
+12. What is one-hot encoding?
+    It is a method to convert categorical variables into binary (0 or 1) columns using pd.get\_dummies()
+
+13. What is error correction in data preprocessing?
+    Error correction refers to identifying and fixing incorrect or inconsistent data values (e.g., outliers, typos, impossible values like negative ages).
+
+14. How do you detect outliers?
+    Using boxplots or statistical methods such as:
+
+* IQR method
+* Z-score method
+
+15. How do you fix or remove outliers?
+
+* Cap or floor values
+* Replace with median
+* Remove the rows
+
+16. What is a machine learning model?
+    A machine learning model is an algorithm that learns patterns from data to make predictions or classifications.
+
+17. Which libraries are used for model building in Python?
+    Common libraries include:
+
+* scikit-learn (sklearn)
+* TensorFlow
+* Keras
+* XGBoost
+
+18. How do you split data for training and testing?
+    from sklearn.model\_selection import train\_test\_split
+    X\_train, X\_test, y\_train, y\_test = train\_test\_split(X, y, test\_size=0.2)
+
+19. What is the difference between classification and regression?
+
+* Classification: Predicts categories (e.g., heart disease: Yes/No)
+* Regression: Predicts continuous values (e.g., AQI score)
+
+20. Name a classification algorithm used in this experiment.
+    Examples:
+
+* Logistic Regression
+* Decision Tree
+* KNN
+* Random Forest
+
+21. How do you evaluate a classification model?
+    Using metrics like:
+
+* Accuracy
+* Precision
+* Recall
+* F1 Score
+* Confusion matrix
+
+22. How do you evaluate a regression model?
+    Using metrics like:
+
+* Mean Squared Error (MSE)
+* Root Mean Squared Error (RMSE)
+* R² Score
+
+23. What is feature selection?
+    It is the process of selecting the most relevant input variables for model building.
+
+24. What is the role of EDA (Exploratory Data Analysis) before modeling?
+    EDA helps understand the data distribution, correlation between variables, and detect anomalies, guiding proper preprocessing and model selection.
+
+25. How do you find correlation between features?
+    df.corr() or using seaborn heatmap: sns.heatmap(df.corr(), annot=True)
+
+26. Why is scaling necessary in some ML algorithms?
+    Algorithms like SVM and KNN are sensitive to feature scale, so normalization/standardization ensures features contribute equally.
+
+27. How do you standardize data?
+    from sklearn.preprocessing import StandardScaler
+    scaler = StandardScaler()
+    df\_scaled = scaler.fit\_transform(df)
+
+28. What is overfitting?
+    Overfitting occurs when the model performs well on training data but poorly on unseen test data due to memorizing noise.
+
+29. How can you prevent overfitting?
+
+* Cross-validation
+* Regularization
+* Pruning (in decision trees)
+* Using simpler models
+
+30. What was the final output of this experiment?
+    A cleaned, integrated dataset and a trained machine learning model that predicts an outcome (e.g., presence of heart disease or AQI level), evaluated using proper performance metrics.
+-----
+
+IQR
+
+You have a column of numbers (maybe post reach, likes, etc.) — but **some numbers are too high or too low**, and they don’t fit with the rest.
+These weird numbers are called **outliers**.
+We want to **find and remove those outliers**.
+
+---
+
+### ✅ WHAT IS IQR?
+
+We use something called **IQR (Interquartile Range)** to help find outliers.
+
+Imagine your data sorted in order:
+
+```
+[1, 2, 4, 5, 6, 7, 9, 10, 12]
+```
+
+* **Q1 (25%)**: number at 25% point = 4
+* **Q3 (75%)**: number at 75% point = 9
+* **IQR = Q3 - Q1 = 9 - 4 = 5**
+
+We say:
+👉 If a number is **way lower than Q1** or **way higher than Q3**, it’s probably an outlier.
+
+We set the limits:
+
+* **Lower limit = Q1 - 1.5 × IQR**
+* **Upper limit = Q3 + 1.5 × IQR**
+
+Any number **outside that range** is considered an **outlier**.
+
+---
+
+ CODE LINE BY LINE
+
+```python
+def remove_outliers(column):
+```
+
+* You're defining a **function** named `remove_outliers`, which takes a **column** (like one column from a DataFrame).
+
+---
+
+```python
+    Q1 = column.quantile(0.25)  
+```
+
+* Finds the **25th percentile** (Q1) — the value where 25% of data is below it.
+
+```python
+    Q3 = column.quantile(0.75)  
+```
+
+* Finds the **75th percentile** (Q3) — the value where 75% of data is below it.
+
+---
+
+```python
+    IQR = Q3 - Q1  
+```
+
+* Calculates the **interquartile range** (middle 50% of your data).
+
+---
+
+```python
+    threshold = 1.5 * IQR  
+```
+
+* This is the **rule of thumb**: anything 1.5×IQR away from Q1 or Q3 is an outlier.
+
+---
+
+```python
+    outlier_mask = (column < Q1 - threshold) | (column > Q3 + threshold)
+```
+
+* This creates a **mask (True/False list)** where:
+
+  * `True` if value **is an outlier**
+  * `False` if it’s normal
+
+The `|` means **“or”**:
+
+* If value < lower limit **OR**
+* value > upper limit → mark it as outlier
+
+---
+
+```python
+    return column[~outlier_mask]
+```
+
+* `~outlier_mask` means: **not an outlier**
+* This returns only the **good values** (outliers removed)
+
+---
+
+### ✅ SUPER SIMPLE EXAMPLE
+
+```python
+import pandas as pd
+data = pd.Series([10, 12, 14, 15, 16, 1000])  # 1000 is weird (outlier)
+
+cleaned = remove_outliers(data)
+print(cleaned)
+```
+
+**Output:**
+
+```
+0    10
+1    12
+2    14
+3    15
+4    16
+```
+
+It removes 1000 because it’s **far away** from the others.
+----------------------------------------------------------------------
+Here’s a comprehensive set of viva questions and answers based on your final experiment:
+
+ EXPERIMENT 5
+Objective: Integrate Python with Hadoop and perform operations on the Forest Fire dataset using MapReduce (PyHadoop) and Hive.
+
+PART A – MapReduce in PyHadoop (Python + Hadoop)
+
+1. What is MapReduce?
+   MapReduce is a programming model for processing and generating large data sets with a parallel, distributed algorithm on a Hadoop cluster.
+
+2. How is Python integrated with Hadoop for MapReduce?
+   Python scripts can be used as mapper and reducer programs in the Hadoop Streaming API, allowing MapReduce to run Python code on HDFS data.
+
+3. What is Hadoop Streaming?
+   Hadoop Streaming is a utility that allows you to create and run MapReduce jobs with any executable or script (like Python) as the mapper and/or the reducer.
+
+4. What is the command to run Python MapReduce code on Hadoop?
+   hadoop jar /path/to/hadoop-streaming.jar&#x20;
+   -input /input/path&#x20;
+   -output /output/path&#x20;
+   -mapper mapper.py&#x20;
+   -reducer reducer.py
+
+5. What is the input format to Python mapper and reducer in Hadoop?
+   Input is usually line-by-line text data. Mapper receives each line as stdin and outputs key-value pairs to stdout. Reducer processes grouped keys.
+
+6. What does the mapper.py script do in this experiment?
+   mapper.py processes each row of the forest fire data and extracts relevant features (e.g., month, temperature, area burned), emitting intermediate key-value pairs.
+
+7. What does the reducer.py script do in this experiment?
+   reducer.py aggregates the mapper output. For example, it may calculate total area burned per month, average wind speed, etc.
+
+8. How is HDFS used in this process?
+   The Forest Fire dataset is stored in HDFS. The input and output paths specified in the Hadoop streaming command are HDFS directories.
+
+9. Give an example of a key-value output from the mapper for this dataset.
+   Key: month (e.g., "aug"), Value: area burned (e.g., 20.5)
+
+10. How do you test the MapReduce job locally before submitting to Hadoop?
+    You can simulate input/output locally by using:
+    cat input.txt | python mapper.py | sort | python reducer.py
+
+PART B – Data Mining in Hive
+
+11. What is Hive?
+    Hive is a data warehouse infrastructure built on top of Hadoop that allows querying and managing large datasets using a SQL-like language called HiveQL.
+
+12. How is the forest fire dataset loaded into Hive?
+    First, the data is placed in HDFS, then a Hive table is created, and the data is loaded using the LOAD DATA or EXTERNAL TABLE command.
+
+13. What is the command to create a Hive table?
+    CREATE TABLE forestfire (
+    X INT, Y INT, month STRING, day STRING,
+    FFMC FLOAT, DMC FLOAT, DC FLOAT, ISI FLOAT,
+    temp FLOAT, RH INT, wind FLOAT, rain FLOAT, area FLOAT
+    ) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE;
+
+14. What is the difference between an internal and an external table in Hive?
+
+* Internal: Hive manages both table metadata and data.
+* External: Hive manages only metadata, data remains in HDFS.
+
+15. What HiveQL query finds the average area burned per month?
+    SELECT month, AVG(area) AS avg\_area FROM forestfire GROUP BY month;
+
+16. How do you find the month with the highest total area burned?
+    SELECT month, SUM(area) AS total\_area FROM forestfire GROUP BY month ORDER BY total\_area DESC LIMIT 1;
+
+17. How do you filter rows in Hive?
+    Using the WHERE clause, e.g.:
+    SELECT \* FROM forestfire WHERE temp > 30;
+
+18. What is a Hive partition?
+    Partitioning in Hive divides the table into parts based on column values for faster query performance.
+
+19. How do you create a partitioned table in Hive?
+    CREATE TABLE forestfire\_partitioned (...) PARTITIONED BY (month STRING);
+
+20. What is Bucketing in Hive?
+    Bucketing divides data into fixed number of files (buckets) based on a hash of a column's value, useful for parallel processing.
+
+21. What is the use of SerDe in Hive?
+    SerDe stands for Serializer/Deserializer. It allows Hive to read/write custom data formats.
+
+22. How do you integrate Hive with Python?
+    You can use PyHive or HiveServer2 JDBC/ODBC clients. In PySpark, you can run Hive queries using spark.sql("your query").
+
+23. What is the benefit of combining Python MapReduce and Hive?
+
+* MapReduce offers fine-grained control over distributed data processing.
+* Hive simplifies complex queries using SQL-like language.
+  Together, they allow powerful data processing and analytics in big data environments.
+
+24. What performance improvements are possible in Hive?
+
+* Partitioning and bucketing
+* Using ORC/Parquet file formats
+* Enabling vectorization and Tez execution engine
+
+25. What challenges did you face in this experiment?
+    Example answers:
+
+* Syntax errors in MapReduce
+* Hive table creation and data loading
+* Debugging PyHadoop job outputs
+* Understanding the structure of forest fire dataset
+
+
+------------------------------------------------------------------------
+
+Experiment Objective: Visualize data using matplotlib and seaborn for the Flight Information System and Facebook Metrics dataset.
+
+Viva Questions and Answers:
+
+1. Q: What is matplotlib?
+   A: matplotlib is a Python library used for creating static, animated, and interactive visualizations. It is highly customizable and works well with pandas DataFrames.
+
+2. Q: What is seaborn?
+   A: seaborn is a Python data visualization library based on matplotlib. It provides a high-level interface for creating attractive and informative statistical graphics.
+
+3. Q: Why do we use seaborn over matplotlib?
+   A: seaborn simplifies the process of creating complex visualizations and includes built-in themes, color palettes, and statistical functions.
+
+4. Q: What are some basic types of plots in matplotlib?
+   A: Common plot types include line plots, bar plots, scatter plots, histograms, and pie charts.
+
+5. Q: What are some types of plots supported by seaborn?
+   A: seaborn supports scatter plots, bar plots, line plots, box plots, violin plots, heatmaps, pair plots, and more.
+
+6. Q: What kind of data visualization did you perform for the Flight Information System?
+   A: We plotted a line chart to show the average departure delay per day in 2008 using seaborn's lineplot() and matplotlib.
+
+7. Q: What kind of visualizations did you perform for the Facebook Metrics dataset?
+   A: We plotted scatter plots to study the relationship between total reach and post consumers, bar charts for post type distribution, and heatmaps to visualize feature correlation.
+
+8. Q: What is a correlation heatmap?
+   A: A correlation heatmap shows the correlation coefficients between multiple variables in a matrix format using color gradients. It helps identify strong or weak relationships.
+
+9. Q: How do you create a line plot in seaborn?
+   A: By using sns.lineplot(x='date', y='value', data=df), we can create a line chart showing trends over time.
+
+10. Q: How do you label axes and add titles in matplotlib?
+    A: We use plt.xlabel(), plt.ylabel(), and plt.title() to label the x-axis, y-axis, and set a plot title.
+
+11. Q: How do you display a plot in Python?
+    A: By calling plt.show(), which renders the visual output of the plot.
+
+12. Q: What is the function of sns.countplot()?
+    A: sns.countplot() is used to show the count of observations in each categorical bin using bars.
+
+13. Q: How do you improve the readability of plots?
+    A: Use proper titles, axis labels, grid lines, color themes, legends, and figure size adjustment.
+
+14. Q: What Python library is typically used alongside seaborn for data manipulation?
+    A: pandas is commonly used to load and manipulate data before visualizing it with seaborn or matplotlib.
+
+15. Q: How do you show a distribution of a numeric variable?
+    A: Using sns.histplot(), sns.boxplot(), or sns.violinplot().
+
+16. Q: What is the difference between sns.scatterplot() and sns.lineplot()?
+    A: scatterplot() plots individual data points, while lineplot() connects data points to show a trend.
+
+17. Q: What is plt.tight\_layout() used for?
+    A: It automatically adjusts subplot parameters to give specified padding and avoid overlapping elements.
+
+18. Q: What is the role of hue in seaborn plots?
+    A: hue adds a color dimension to the plot, grouping data points by a categorical variable.
+
+19. Q: Can seaborn and matplotlib be used together?
+    A: Yes, seaborn is built on top of matplotlib and can be customized further using matplotlib functions.
+
+20. Q: Why is data visualization important in data science?
+    A: It helps in understanding patterns, trends, outliers, and relationships in data, which aids in better decision-making and model building.
+
+----------------------------------------------------------------------------
+ EXP: Perform the following data visualization operations using Tableau on Adult and Iris datasets.
+
+🧠 Viva Questions and Answers:
+
+1. Q: What is Tableau?
+   A: Tableau is a powerful data visualization and business intelligence tool used to create interactive and shareable dashboards. It helps users convert raw data into understandable visual insights.
+
+2. Q: What are the types of data visualizations you performed in Tableau?
+   A: We performed 1D, 2D, 3D, Temporal, Multidimensional, Tree/Hierarchical, and Network data visualizations using the Adult and Iris datasets.
+
+1D (Linear) Visualization
+
+3. Q: What is 1D or linear data visualization?
+   A: 1D visualization displays distribution of a single variable, like a bar chart showing the frequency of "education" levels in the Adult dataset.
+
+4. Q: Give an example of 1D visualization from your dataset.
+   A: A bar chart showing count of individuals by occupation in the Adult dataset.
+
+2D (Planar) Visualization
+
+5. Q: What is 2D data visualization?
+   A: 2D visualization shows the relationship between two variables using scatter plots, heatmaps, etc.
+
+6. Q: What 2D plot did you use for the Iris dataset?
+   A: A scatter plot comparing petal length and petal width for different Iris species.
+
+3D (Volumetric) Visualization
+
+7. Q: Does Tableau support true 3D plots?
+   A: Tableau doesn't support true 3D plots, but we simulate 3D using bubble charts or layered visualizations with size and color as third variables.
+
+8. Q: How did you represent 3D data?
+   A: We used a scatter plot with color representing species, X and Y axes as sepal and petal lengths, and size as petal width to simulate 3D.
+
+Temporal Visualization
+
+9. Q: What is temporal data visualization?
+   A: It displays data over time, such as trends or changes using line graphs or area charts.
+
+10. Q: How did you visualize temporal data?
+    A: In Tableau, we used a line chart showing income variation across different age groups (simulating temporal dimension) in the Adult dataset.
+
+Multidimensional Visualization
+
+11. Q: What is multidimensional data visualization?
+    A: It represents multiple variables in a single chart, often using size, color, and axes to represent more than two variables.
+
+12. Q: Give an example of a multidimensional chart.
+    A: A bubble chart with sepal length on X-axis, petal width on Y-axis, bubble size as sepal width, and color as Iris species.
+
+Tree/Hierarchical Visualization
+
+13. Q: What is hierarchical data?
+    A: Data organized in parent-child relationships, like category → subcategory → item.
+
+14. Q: Which chart in Tableau shows hierarchical data?
+    A: Tree maps and sunburst charts are used to display hierarchical relationships in Tableau.
+
+15. Q: How did you visualize hierarchy in the Adult dataset?
+    A: We used a treemap where ‘education’ was the parent and ‘occupation’ was the child field.
+
+Network Visualization
+
+16. Q: What is network data visualization?
+    A: It shows relationships between entities (nodes) connected by edges/links.
+
+17. Q: Can Tableau perform true network visualization?
+    A: Tableau doesn't natively support network graphs, but network-style visualizations can be simulated using scatter plots with connecting lines or by importing pre-processed network data.
+
+18. Q: How did you simulate network visualization?
+    A: By using coordinates (X, Y) and drawing lines between points representing relationships, e.g., simulating relationships between education level and income groups.
+
+General Tableau Questions
+
+19. Q: What are Dimensions and Measures in Tableau?
+    A: Dimensions are qualitative fields (e.g., gender, education), and Measures are quantitative fields (e.g., income, petal length).
+
+20. Q: What is a dashboard in Tableau?
+    A: A dashboard is a collection of multiple visualizations (sheets) arranged together to provide an interactive overview.
+
+21. Q: What is the difference between Worksheet and Dashboard?
+    A: A worksheet contains a single visualization, while a dashboard can combine several worksheets and objects for a comprehensive view.
+
+22. Q: What is a calculated field in Tableau?
+    A: A calculated field is a new column created using existing fields through expressions to derive new metrics or dimensions.
+
+23. Q: Can we connect Excel or CSV files to Tableau?
+    A: Yes, Tableau supports importing data from multiple sources including Excel, CSV, SQL databases, Google Sheets, etc.
+
+24. Q: How do filters work in Tableau?
+    A: Filters are used to limit the data displayed in the visualization. They can be applied to dimensions or measures.
+
+25. Q: How can you improve the visual appeal of your charts in Tableau?
+    A: By using color palettes, tooltips, titles, filters, annotations, legends, and formatting options like borders and font styles.
+
+26. Q: What is the role of “Show Me” in Tableau?
+    A: “Show Me” is a feature that recommends chart types based on the fields selected, helping users create relevant visualizations quickly.
+
+27. Q: What chart is best for comparing categories?
+    A: Bar charts or column charts are best for comparing different categories.
+
+28. Q: What chart is ideal for continuous data over time?
+    A: Line charts or area charts are ideal for time series data.
+
+29. Q: What chart best shows parts of a whole?
+    A: Pie charts or treemaps are used to show parts of a whole.
+
+30. Q: What did you learn from this visualization experiment?
+    A: We learned how to represent different types of data visually using Tableau, identify patterns, compare features, and build interactive dashboards.
+
+
+-------------------------------------------------------------
+Below are possible viva questions and answers related to building a review scraper for an e-commerce website using **Viva Questions and Answers:**
+
+1. **Q: What is web scraping?**
+
+   * **A:** Web scraping is the process of extracting data from websites using automated scripts or tools. It helps in collecting information that is not available via APIs or other structured data formats.
+
+2. **Q: Which Python libraries did you use to scrape data in this project?**
+
+   * **A:** I used `requests` for sending HTTP requests and `BeautifulSoup` from the `bs4` library to parse and extract data from HTML.
+
+3. **Q: What does the `requests` library do in your code?**
+
+   * **A:** The `requests` library is used to send HTTP requests to a given URL and retrieve the raw HTML content of the webpage.
+
+4. **Q: What is BeautifulSoup used for in web scraping?**
+
+   * **A:** BeautifulSoup is used to parse HTML and XML documents. It helps in extracting specific data from a webpage by navigating through HTML tags, attributes, and classes.
+
+5. **Q: How does the `find_all` method of BeautifulSoup work?**
+
+   * **A:** The `find_all` method retrieves all occurrences of the specified HTML element or tag. For example, `soup.find_all('div', {'class': '_27M-vq'})` extracts all review blocks from the HTML.
+
+6. **Q: What is the role of headers in the `requests.get()` method?**
+
+   * **A:** Headers are used to mimic a request from a web browser. By setting the `User-Agent` in the headers, we prevent the request from being blocked by the website’s anti-scraping mechanisms.
+
+7. **Q: Why do we need to extract reviews from a paginated product page?**
+
+   * **A:** Websites like Flipkart, Amazon, and others paginate their reviews into multiple pages. We need to scrape each page to gather all the reviews for a given product.
+
+8. **Q: Can you explain how to handle missing data in web scraping?**
+
+   * **A:** Missing data is handled using `try-except` blocks. If a particular element like the customer name or rating is missing in a review, the `except` block assigns a default value like `'N/A'`.
+
+9. **Q: What would happen if the HTML structure of the page changes?**
+
+   * **A:** If the HTML structure changes (e.g., classes or tags), the code will not find the data elements correctly. In such cases, the scraping code will need to be updated to match the new structure.
+
+10. **Q: How would you scrape data from multiple pages of reviews?**
+
+    * **A:** You can append page numbers to the URL (e.g., `&page=2`) and iterate through all pages until all reviews are scraped. The URL structure usually has a parameter that allows you to access different pages.
+
+11. **Q: How do you handle a situation where the website blocks your scraping request?**
+
+    * **A:** We can rotate user agents, use proxies, introduce delays between requests (to mimic human browsing behavior), and respect `robots.txt` to avoid getting blocked.
+
+12. **Q: What is the importance of respecting a website's `robots.txt` file?**
+
+    * **A:** The `robots.txt` file contains rules that specify which parts of the website can be crawled or scraped by bots. It is important to follow these rules to avoid violating the website’s terms of service.
+
+13. **Q: What is the main challenge you face when scraping dynamic content?**
+
+    * **A:** Dynamic content loaded via JavaScript may not be available in the HTML page source. In such cases, we would need to use tools like Selenium or Playwright that can handle JavaScript-rendered content.
+
+14. **Q: How do you store the scraped review data?**
+
+    * **A:** We can store the scraped data in a structured format such as CSV, JSON, or directly into a database like MySQL or MongoDB for further analysis.
+
+15. **Q: What is the difference between `find` and `find_all` methods in BeautifulSoup?**
+
+    * **A:** `find` returns the first occurrence of a specified element, while `find_all` returns a list of all matching elements in the HTML.
+
+16. **Q: What is an HTML element's "class" attribute, and why do we use it to extract data?**
+
+    * **A:** The `class` attribute is used to assign a name to an element for styling or grouping purposes. In scraping, it helps identify and select specific elements that contain the data we need.
+
+17. **Q: What will happen if the website's structure changes significantly?**
+
+    * **A:** If the structure changes, such as changes to class names or tags, the scraping logic will fail. The code will need to be re-examined and modified according to the new structure.
+
+18. **Q: Can you explain how you handle pagination in web scraping?**
+
+    * **A:** Pagination is handled by detecting the page number parameter in the URL (e.g., `&page=1`). We increment this page number and scrape all pages until the last one.
+
+19. **Q: How do you make your scraper faster and more efficient?**
+
+    * **A:** We can make the scraper faster by using multi-threading or asynchronous requests, reducing unnecessary delays, and minimizing the amount of data scraped.
+
+20. **Q: How do you ensure the accuracy of the scraped data?**
+
+    * **A:** We ensure accuracy by validating the data with some checks, like verifying if the review, rating, and other fields are in the expected format.
+
+
+---------------------------------
+Here are some potential viva questions and answers related to **Single node/Multiple node Hadoop installation**:
+
+### **Viva Questions and Answers:**
+
+1. **Q: What is Hadoop, and why is it used in data processing?**
+
+   * **A:** Hadoop is an open-source framework designed for the distributed storage and processing of large datasets using the MapReduce programming model. It is used to handle big data across clusters of computers in a scalable and fault-tolerant manner.
+
+2. **Q: What is the difference between Single Node and Multiple Node Hadoop installations?**
+
+   * **A:**
+
+     * **Single Node Hadoop**: In a single-node Hadoop setup, all the Hadoop components (NameNode, DataNode, ResourceManager, NodeManager, etc.) run on a single machine. It is typically used for testing and learning purposes.
+     * **Multiple Node Hadoop**: In a multi-node Hadoop setup, the Hadoop components are distributed across multiple machines (nodes). It is used in a production environment to process large-scale data efficiently.
+
+3. **Q: What are the key components of the Hadoop ecosystem?**
+
+   * **A:** The key components of the Hadoop ecosystem include:
+
+     * **HDFS (Hadoop Distributed File System)**: A distributed file system that stores large files across multiple machines.
+     * **MapReduce**: A programming model used for processing large datasets in parallel.
+     * **YARN (Yet Another Resource Negotiator)**: A resource management layer that manages resources in the cluster.
+     * **Hive, Pig, HBase, etc.**: Other components that provide higher-level abstractions and tools for big data processing.
+
+4. **Q: What are the steps to install Hadoop on a single-node cluster?**
+
+   * **A:** The steps to install Hadoop on a single-node cluster are:
+
+     1. Install Java (Java 8 is preferred).
+     2. Download the Hadoop distribution from the official Apache website.
+     3. Configure the Hadoop environment by setting environment variables (`HADOOP_HOME`, `JAVA_HOME`).
+     4. Configure Hadoop files (`core-site.xml`, `hdfs-site.xml`, `mapred-site.xml`, `yarn-site.xml`).
+     5. Format the HDFS NameNode.
+     6. Start Hadoop daemons using `start-dfs.sh` and `start-yarn.sh`.
+     7. Access the Hadoop web UI to verify that Hadoop is running.
+
+5. **Q: How do you configure Hadoop for a multi-node setup?**
+
+   * **A:** In a multi-node setup, the following configurations need to be done:
+
+     1. **Cluster Configuration**: Edit `core-site.xml`, `hdfs-site.xml`, `yarn-site.xml`, and `mapred-site.xml` to point to the appropriate hostnames or IP addresses of the cluster nodes.
+     2. **Passwordless SSH**: Configure passwordless SSH between the master node and slave nodes using the `ssh-keygen` and `ssh-copy-id` commands.
+     3. **HDFS Configuration**: Set up the NameNode, DataNodes, and Secondary NameNode on appropriate machines.
+     4. **YARN Configuration**: Set up the ResourceManager on the master node and NodeManagers on the worker nodes.
+     5. **Start Services**: Start the Hadoop services on the master node using `start-dfs.sh` and `start-yarn.sh`, and the worker nodes will automatically connect to the master.
+
+6. **Q: What is the purpose of HDFS in a Hadoop cluster?**
+
+   * **A:** HDFS (Hadoop Distributed File System) is used to store large volumes of data across multiple machines. It splits data into blocks and distributes them across the cluster, ensuring fault tolerance by replicating each block across multiple nodes.
+
+7. **Q: How does Hadoop ensure fault tolerance?**
+
+   * **A:** Hadoop ensures fault tolerance by replicating data blocks in HDFS. By default, each block is replicated 3 times across different nodes, ensuring that if one node fails, the data is still available on other nodes.
+
+8. **Q: How would you check if your Hadoop installation is successful?**
+
+   * **A:** After starting the Hadoop daemons (HDFS and YARN), you can verify the installation by:
+
+     * Accessing the HDFS web UI (typically at `http://localhost:50070` for a single-node setup) to check the status of NameNode and DataNodes.
+     * Accessing the YARN ResourceManager web UI (usually `http://localhost:8088`) to verify the status of ResourceManager and NodeManagers.
+     * Running basic commands like `hadoop fs -ls /` to check if HDFS is working.
+     * Running `jps` to verify that the Hadoop daemons (NameNode, DataNode, ResourceManager, etc.) are running.
+
+9. **Q: How does the NameNode and DataNode interact in HDFS?**
+
+   * **A:** The **NameNode** is the master server that manages the metadata of HDFS. It keeps track of where the blocks of data are stored across the DataNodes. The **DataNode** stores the actual data blocks and sends regular heartbeats to the NameNode to indicate that they are alive.
+
+10. **Q: What is the role of YARN in Hadoop?**
+
+    * **A:** YARN (Yet Another Resource Negotiator) is the resource management layer of Hadoop. It manages resources and schedules tasks across the cluster. YARN consists of the ResourceManager (master) and NodeManagers (slaves), which allocate resources to different applications in the cluster.
+
+11. **Q: What is the difference between a master node and a slave node in a Hadoop cluster?**
+
+    * **A:**
+
+      * **Master Node**: It manages the cluster and contains the NameNode, ResourceManager, and JobHistoryServer. It is responsible for managing resources, scheduling tasks, and handling metadata.
+      * **Slave Node**: It runs DataNodes and NodeManagers, which store data blocks and run tasks assigned by the ResourceManager.
+
+12. **Q: What is the purpose of SSH configuration in Hadoop?**
+
+    * **A:** SSH configuration is required for passwordless login to allow the master node to communicate with the slave nodes. This is important for starting and stopping Hadoop daemons on remote nodes in a multi-node setup.
+
+13. **Q: Can you explain the significance of the `mapred-site.xml` configuration file?**
+
+    * **A:** The `mapred-site.xml` file contains configuration settings for the MapReduce framework. It includes settings for the job tracker in the older versions of Hadoop, but in newer versions, it is handled by YARN, so the `mapred-site.xml` file contains only the relevant configuration for MapReduce jobs under YARN.
+
+14. **Q: What is the role of the ResourceManager in YARN?**
+
+    * **A:** The **ResourceManager** is responsible for managing resources across the cluster. It allocates resources to different applications and coordinates with NodeManagers to launch containers on slave nodes.
+
+15. **Q: How can you scale a Hadoop cluster?**
+
+    * **A:** You can scale a Hadoop cluster by adding more slave nodes (DataNodes and NodeManagers) to the cluster. The master node automatically detects new nodes and rebalances the data across the nodes in the cluster.
+
+16. **Q: How can you monitor the health of a Hadoop cluster?**
+
+    * **A:** Hadoop provides web UIs for monitoring:
+
+      * **HDFS UI** (`http://localhost:50070`) to check the status of NameNode and DataNodes.
+      * **YARN UI** (`http://localhost:8088`) to monitor ResourceManager and NodeManagers.
+      * Logs in the `logs` directory of the Hadoop installation for troubleshooting.
+
+17. **Q: How would you stop a Hadoop cluster?**
+
+    * **A:** To stop the Hadoop cluster, run the following commands:
+
+      * `stop-yarn.sh`: Stops YARN.
+      * `stop-dfs.sh`: Stops HDFS.
+      * You can also stop individual Hadoop daemons manually using `jps` and `kill` commands if necessary.
+
+18. **Q: What is the importance of the `core-site.xml` file in Hadoop configuration?**
+
+    * **A:** The `core-site.xml` file contains core Hadoop configuration settings, including the URI for the HDFS file system. This file is critical for specifying locations of HDFS and defining default filesystem protocols.
+
+------------------------------------------------------------------------------
+For the mini-project on **predictive models** using the dataset on **US Graduate Schools Admission Parameters**, here are some potential **viva questions and answers** that you could expect during your exam:
+
+### **Viva Questions and Answers:**
+
+#### **Q1: What is the objective of this project?**
+
+* **A:** The objective of this project is to develop predictive models to predict the chances of a candidate being admitted to a US graduate school based on various parameters like GRE scores, TOEFL scores, university ratings, and academic background. We use machine learning techniques to model the relationship between these parameters and the likelihood of admission.
+
+#### **Q2: What data preprocessing steps did you perform before building the model?**
+
+* **A:** The following data preprocessing steps were carried out:
+
+  * **Missing Data**: We checked for missing values and handled them using either imputation (mean, median, or mode) or removal of rows/columns with excessive missing values.
+  * **Feature Scaling**: Numerical features like GRE scores were scaled using StandardScaler to bring them to a comparable range.
+  * **Categorical Data**: We encoded categorical variables (like university rating) using One-Hot Encoding or Label Encoding as appropriate.
+  * **Outlier Detection**: We detected and removed outliers using statistical methods like Z-Score or IQR (Interquartile Range).
+  * **Train-Test Split**: We split the data into training and testing sets, typically with an 80:20 or 70:30 ratio.
+
+#### **Q3: What predictive models did you use for this project?**
+
+* **A:** We used the following predictive models:
+
+  * **Linear Regression**: To predict the chances of admission based on continuous input variables like GRE and TOEFL scores.
+  * **Logistic Regression**: To classify candidates as admitted or not based on their admission scores.
+  * **Decision Trees**: For non-linear relationships, capturing decision rules for admission chances.
+  * **Random Forest**: An ensemble of decision trees to improve prediction accuracy and avoid overfitting.
+  * **Support Vector Machine (SVM)**: To classify candidates using kernel trick to handle non-linearity.
+  * **K-Nearest Neighbors (KNN)**: A non-parametric method used for classification based on nearest neighbors.
+
+#### **Q4: How did you evaluate the performance of the models?**
+
+* **A:** We evaluated the performance of the models using:
+
+  * **Accuracy**: For classification models, we measured accuracy to see the proportion of correct predictions.
+  * **Confusion Matrix**: To understand the true positives, true negatives, false positives, and false negatives for classification tasks.
+  * **Precision, Recall, and F1-Score**: For a more detailed evaluation, especially in imbalanced datasets.
+  * **Mean Absolute Error (MAE) and Mean Squared Error (MSE)**: For regression models, we measured these errors to evaluate prediction performance.
+  * **Cross-validation**: We used k-fold cross-validation to assess the model's robustness and avoid overfitting.
+
+#### **Q5: How did you handle overfitting in your models?**
+
+* **A:** We took the following measures to prevent overfitting:
+
+  * **Cross-validation**: We performed k-fold cross-validation to ensure that the model generalizes well on unseen data.
+  * **Regularization**: For models like logistic regression, we used regularization techniques (L1, L2) to reduce model complexity and prevent overfitting.
+  * **Ensemble Methods**: We used ensemble models like Random Forest and boosting techniques to reduce variance and improve the generalization ability of the model.
+  * **Pruning in Decision Trees**: We set maximum depths for decision trees to avoid excessively deep trees that may overfit the data.
+
+#### **Q6: Why did you choose the models you used in this project?**
+
+* **A:** The models were chosen based on the following considerations:
+
+  * **Linear Regression**: Simple and interpretable for predicting continuous outcomes like admission chances.
+  * **Logistic Regression**: Useful for classification tasks (admitted vs. not admitted) and works well when the relationship between variables is linear.
+  * **Decision Trees and Random Forests**: These models are useful for handling non-linear relationships and can easily capture complex interactions between features.
+  * **Support Vector Machines (SVM)**: Effective in high-dimensional spaces and can handle non-linear decision boundaries.
+  * **KNN**: A simple but effective classification technique that doesn’t make assumptions about the underlying data distribution.
+
+#### **Q7: What were the key features used to build the predictive models?**
+
+* **A:** The key features in the dataset included:
+
+  * **GRE Scores**: Graduate Record Examinations (GRE) scores of the applicant.
+  * **TOEFL Scores**: Test of English as a Foreign Language (TOEFL) scores of the applicant.
+  * **University Rating**: The rating of the university (on a scale).
+  * **SOP (Statement of Purpose)**: Quality of SOP submitted by the applicant.
+  * **LOR (Letter of Recommendation)**: Quality of LOR.
+  * **CGPA**: Cumulative Grade Point Average.
+  * **Research**: Whether the applicant has research experience (binary).
+  * **Chance of Admission**: The target variable representing the probability of admission.
+
+#### **Q8: How did you handle imbalanced classes (if applicable)?**
+
+* **A:** If the dataset had imbalanced classes (e.g., many applicants admitted vs. few not admitted), we used:
+
+  * **Resampling Techniques**: Like oversampling the minority class (e.g., using SMOTE) or undersampling the majority class.
+  * **Class Weights**: Some algorithms (like Logistic Regression, SVM, and Random Forest) allow setting class weights to give more importance to the minority class.
+  * **Evaluation Metrics**: Instead of accuracy, we focused on Precision, Recall, and F1-Score, which are more informative in imbalanced datasets.
+
+#### **Q9: What were the challenges you faced during this project?**
+
+* **A:** Some of the challenges included:
+
+  * **Data Quality**: Missing values and outliers that needed to be handled properly.
+  * **Feature Selection**: Identifying the most important features for predicting the target variable.
+  * **Model Selection**: Choosing the right model for different types of problems (classification vs. regression).
+  * **Overfitting/Underfitting**: Striking the right balance between model complexity and generalization.
+
+#### **Q10: Can you explain the concept of feature engineering in this project?**
+
+* **A:** Feature engineering involves creating new features or modifying existing ones to improve model performance. In this project, we performed:
+
+  * **Feature Scaling**: Normalizing numerical features like GRE and TOEFL scores.
+  * **Encoding**: Transforming categorical variables (like university rating and research) into numeric values.
+  * **Interaction Features**: We might have created new features by combining existing ones, like combining GRE scores and TOEFL scores to create a new feature that might better predict admission chances.
+
+#### **Q11: How does the model predict the chances of admission for a new applicant?**
+
+* **A:** The model predicts the chances of admission by applying learned relationships between input features (like GRE, TOEFL, CGPA) and the target variable (admission chance). For example, the Random Forest model aggregates predictions from multiple decision trees, each based on a subset of features, to give a final prediction.
+
+#### **Q12: How can this model be deployed in a real-world application?**
+
+* **A:** The trained model can be deployed as part of an application or web service that allows prospective students to input their information (e.g., GRE, TOEFL, CGPA) and receive a prediction about their chances of admission to a graduate school. The model could be integrated with a web application where users can interact with it, and the results can be shown in real time.
+
+
+
+
+
+
+

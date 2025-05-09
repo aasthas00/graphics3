@@ -1,0 +1,24 @@
+df.head() 
+
+df.tail() 
+
+df.shape 
+
+df.columns 
+
+df.dtypes
+
+df.info()
+
+df.describe() 
+
+df.isnull().sum() 
+
+df.isna().mean() – Proportion of missing values (useful for threshold-based decisions).
+
+df.nunique() – Number of unique values per column.
+
+
+df.duplicated().sum() – Number of duplicate rows.
+
+df[df.duplicated()] – Actual duplicate rows.
